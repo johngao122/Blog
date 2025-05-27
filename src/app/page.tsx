@@ -10,6 +10,8 @@ export const metadata = {
         "Welcome to my blog - discover my latest thoughts, stories and ideas",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
     const posts = await getAllBlogPosts();
 
