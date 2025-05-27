@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
 
+export const metadata = {
+    title: "Home",
+    description:
+        "Welcome to my blog - discover my latest thoughts, stories and ideas",
+};
+
 export default async function HomePage() {
     const posts = await getAllBlogPosts();
 
