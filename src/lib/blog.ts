@@ -12,6 +12,7 @@ export async function uploadBanner(file: File): Promise<string> {
     const blob = await put(`banners/${Date.now()}-${file.name}`, file, {
         access: "public",
     });
+    console.log("Uploaded banner URL:", blob.url);
     return blob.url;
 }
 
@@ -57,6 +58,7 @@ export async function getAllBlogPosts(): Promise<BlogPost[]> {
                 console.log("Post data:", {
                     title: post.title,
                     published: post.published,
+                    bannerUrl: post.bannerUrl,
                 });
 
                 if (post.published) {
