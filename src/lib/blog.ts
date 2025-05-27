@@ -43,13 +43,22 @@ export async function saveBlogPost(post: CreateBlogPost): Promise<BlogPost> {
 
 export async function getAllBlogPosts(): Promise<BlogPost[]> {
     try {
+        console.log("Fetching blog posts...");
         const { blobs } = await list({ prefix: "posts/" });
+        console.log("Found blobs:", blobs.length);
+
         const posts: BlogPost[] = [];
 
         for (const blob of blobs) {
             try {
+                console.log("Fetching blob:", blob.pathname);
                 const response = await fetch(blob.url);
                 const post: BlogPost = await response.json();
+                console.log("Post data:", {
+                    title: post.title,
+                    published: post.published,
+                });
+
                 if (post.published) {
                     posts.push(post);
                 }
@@ -58,6 +67,9 @@ export async function getAllBlogPosts(): Promise<BlogPost[]> {
             }
         }
 
+        console.log("Total published posts:", posts.length);
+
+        // Sort by creation date (newest first)
         return posts.sort(
             (a, b) =>
                 new Date(b.createdAt).getTime() -
