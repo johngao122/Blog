@@ -18,7 +18,7 @@ export default async function HomePage() {
                                 My Blog
                             </h1>
                             <p className="text-gray-600 mt-1">
-                                Thoughts, stories and ideas
+                                Place where i dump my thoughts
                             </p>
                         </div>
                         <Link href="/create">
