@@ -1,16 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CreatePostForm from "@/components/CreatePostForm";
-import { CreateBlogPost } from "@/types/blog";
+import DraftDialog from "@/components/DraftDialog";
+import { CreateBlogPost, Draft } from "@/types/blog";
+import { loadDraft, hasDraft, clearDraft } from "@/lib/drafts";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 export default function CreatePostPage() {
     const [isLoading, setIsLoading] = useState(false);
+    const [showDraftDialog, setShowDraftDialog] = useState(false);
+    const [existingDraft, setExistingDraft] = useState<Draft | null>(null);
+    const [loadedDraft, setLoadedDraft] = useState<Draft | null>(null);
     const router = useRouter();
+
+    // Check for existing draft on component mount
+    useEffect(() => {
+        if (hasDraft()) {
+            const draft = loadDraft();
+            if (draft) {
+                setExistingDraft(draft);
+                setShowDraftDialog(true);
+            }
+        }
+    }, []);
 
     const handleSubmit = async (post: CreateBlogPost) => {
         setIsLoading(true);
@@ -47,6 +63,17 @@ export default function CreatePostPage() {
         }
     };
 
+    const handleLoadDraft = () => {
+        if (existingDraft) {
+            setLoadedDraft(existingDraft);
+        }
+    };
+
+    const handleDiscardDraft = () => {
+        clearDraft();
+        setExistingDraft(null);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -77,8 +104,23 @@ export default function CreatePostPage() {
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <CreatePostForm onSubmit={handleSubmit} isLoading={isLoading} />
+                <CreatePostForm
+                    onSubmit={handleSubmit}
+                    isLoading={isLoading}
+                    initialDraft={loadedDraft}
+                />
             </main>
+
+            {/* Draft Dialog */}
+            {existingDraft && (
+                <DraftDialog
+                    open={showDraftDialog}
+                    onOpenChange={setShowDraftDialog}
+                    draft={existingDraft}
+                    onLoadDraft={handleLoadDraft}
+                    onDiscardDraft={handleDiscardDraft}
+                />
+            )}
         </div>
     );
 }

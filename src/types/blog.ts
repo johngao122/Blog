@@ -17,3 +17,15 @@ export interface CreateBlogPost {
     bannerFile: File;
     published: boolean;
 }
+
+export interface Draft {
+    id: string;
+    title: string;
+    content: string;
+    excerpt: string;
+    bannerFileName?: string;
+    bannerFileSize?: number;
+    bannerFileType?: string;
+    published: boolean;
+    lastSaved: string;
+}

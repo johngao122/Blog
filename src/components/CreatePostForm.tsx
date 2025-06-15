@@ -1,28 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TiptapEditor from "./TiptapEditor";
-import { CreateBlogPost } from "@/types/blog";
+import { CreateBlogPost, Draft } from "@/types/blog";
+import { AutoSaveManager, saveDraft, clearDraft } from "@/lib/drafts";
+import { Badge } from "@/components/ui/badge";
+import { Save } from "lucide-react";
 
 interface CreatePostFormProps {
     onSubmit: (post: CreateBlogPost) => Promise<void>;
     isLoading?: boolean;
+    initialDraft?: Draft | null;
 }
 
 export default function CreatePostForm({
     onSubmit,
     isLoading = false,
+    initialDraft,
 }: CreatePostFormProps) {
-    const [title, setTitle] = useState("");
-    const [excerpt, setExcerpt] = useState("");
-    const [content, setContent] = useState("");
+    const [title, setTitle] = useState(initialDraft?.title || "");
+    const [excerpt, setExcerpt] = useState(initialDraft?.excerpt || "");
+    const [content, setContent] = useState(initialDraft?.content || "");
     const [bannerFile, setBannerFile] = useState<File | null>(null);
-    const [published, setPublished] = useState(false);
+    const [published, setPublished] = useState(
+        initialDraft?.published || false
+    );
+    const [lastSaved, setLastSaved] = useState<string | null>(null);
+
+    const autoSaveManager = useRef<AutoSaveManager | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const getDraftData = (): Partial<Draft> => ({
+            title,
+            content,
+            excerpt,
+            published,
+            bannerFileName: bannerFile?.name,
+            bannerFileSize: bannerFile?.size,
+            bannerFileType: bannerFile?.type,
+        });
+
+        autoSaveManager.current = new AutoSaveManager(getDraftData);
+        autoSaveManager.current.start();
+
+        return () => {
+            autoSaveManager.current?.stop();
+        };
+    }, [title, content, excerpt, published, bannerFile]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (title || content || excerpt) {
+                setLastSaved(new Date().toLocaleTimeString());
+            }
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, [title, content, excerpt]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,11 +87,14 @@ export default function CreatePostForm({
 
         await onSubmit(post);
 
+        clearDraft();
+
         setTitle("");
         setExcerpt("");
         setContent("");
         setBannerFile(null);
         setPublished(false);
+        setLastSaved(null);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,10 +106,51 @@ export default function CreatePostForm({
         }
     };
 
+    const handleClear = () => {
+        setTitle("");
+        setExcerpt("");
+        setContent("");
+        setBannerFile(null);
+        setPublished(false);
+        setLastSaved(null);
+        clearDraft();
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
+    const handleSaveNow = () => {
+        if (title || content || excerpt) {
+            autoSaveManager.current?.saveNow();
+            setLastSaved(new Date().toLocaleTimeString());
+        }
+    };
+
     return (
         <Card className="w-full max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle>Create New Blog Post</CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle>Create New Blog Post</CardTitle>
+                    <div className="flex items-center gap-2">
+                        {lastSaved && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Save className="h-3 w-3 mr-1" />
+                                Last saved: {lastSaved}
+                            </Badge>
+                        )}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSaveNow}
+                            disabled={!title && !content && !excerpt}
+                        >
+                            <Save className="h-4 w-4 mr-1" />
+                            Save Now
+                        </Button>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -96,6 +180,7 @@ export default function CreatePostForm({
                     <div className="space-y-2">
                         <Label htmlFor="banner">Banner Image</Label>
                         <Input
+                            ref={fileInputRef}
                             id="banner"
                             type="file"
                             accept="image/*"
@@ -105,6 +190,13 @@ export default function CreatePostForm({
                         {bannerFile && (
                             <p className="text-sm text-gray-600">
                                 Selected: {bannerFile.name}
+                            </p>
+                        )}
+                        {initialDraft?.bannerFileName && !bannerFile && (
+                            <p className="text-sm text-yellow-600">
+                                Previous draft had:{" "}
+                                {initialDraft.bannerFileName} - Please select a
+                                new banner image
                             </p>
                         )}
                     </div>
@@ -136,13 +228,7 @@ export default function CreatePostForm({
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => {
-                                setTitle("");
-                                setExcerpt("");
-                                setContent("");
-                                setBannerFile(null);
-                                setPublished(false);
-                            }}
+                            onClick={handleClear}
                         >
                             Clear
                         </Button>
